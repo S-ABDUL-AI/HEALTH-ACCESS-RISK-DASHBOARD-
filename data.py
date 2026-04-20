@@ -18,16 +18,75 @@ import requests
 from config import DATASET_URL, FEATURE_COLUMNS, RANDOM_STATE
 
 REQUIRED_COLUMNS = ["state", *FEATURE_COLUMNS]
+NUMERIC_BOUNDS = {
+    "median_income": (15_000.0, 200_000.0),
+    "uninsured_rate": (0.0, 40.0),
+    "healthcare_cost_index": (50.0, 250.0),
+    "rural_population": (0.0, 1.0),
+}
+DEFAULT_NUMERIC_FILL = {
+    "median_income": 60_000.0,
+    "uninsured_rate": 10.0,
+    "healthcare_cost_index": 100.0,
+    "rural_population": 0.25,
+}
+
+
+def clean_panel(df: pd.DataFrame | None) -> pd.DataFrame:
+    """
+    Normalize, validate, and sanitize panel data for real-world robustness.
+
+    - Standardizes column names
+    - Enforces required columns
+    - Coerces numerics with clipping to plausible ranges
+    - Removes bad/duplicate state rows
+    - Fills missing numeric values with medians (or defaults if needed)
+    """
+    if df is None or len(df) == 0:
+        return pd.DataFrame(columns=REQUIRED_COLUMNS)
+
+    out = df.copy()
+    out.columns = [str(c).strip().lower().replace(" ", "_") for c in out.columns]
+
+    for col in REQUIRED_COLUMNS:
+        if col not in out.columns:
+            out[col] = np.nan
+
+    # Keep only required modeling columns to avoid accidental schema drift.
+    out = out[REQUIRED_COLUMNS].copy()
+    out["state"] = out["state"].astype(str).str.strip()
+    out = out[out["state"].ne("") & out["state"].ne("nan")]
+
+    for col in FEATURE_COLUMNS:
+        out[col] = pd.to_numeric(out[col], errors="coerce")
+        lo, hi = NUMERIC_BOUNDS[col]
+        out[col] = out[col].clip(lower=lo, upper=hi)
+
+    # Remove duplicate state labels and rows with no usable features.
+    out = out.drop_duplicates(subset=["state"], keep="first")
+    out = out.dropna(subset=FEATURE_COLUMNS, how="all")
+
+    for col in FEATURE_COLUMNS:
+        if out[col].isna().any():
+            median = out[col].median()
+            if pd.isna(median):
+                median = DEFAULT_NUMERIC_FILL[col]
+            out[col] = out[col].fillna(float(median))
+
+    return out.reset_index(drop=True)
 
 
 def is_valid_panel(df: pd.DataFrame | None) -> bool:
     """True if the frame has the columns and rows needed for modeling."""
-    if df is None or len(df) == 0:
+    cleaned = clean_panel(df)
+    if len(cleaned) == 0:
         return False
-    if not all(c in df.columns for c in REQUIRED_COLUMNS):
+    if not all(c in cleaned.columns for c in REQUIRED_COLUMNS):
         return False
-    numeric = df[FEATURE_COLUMNS].apply(pd.to_numeric, errors="coerce")
+    numeric = cleaned[FEATURE_COLUMNS].apply(pd.to_numeric, errors="coerce")
     if numeric.isna().all().all():
+        return False
+    if cleaned["state"].nunique() < 3:
         return False
     return True
 
@@ -50,15 +109,16 @@ def minimal_fallback_panel() -> pd.DataFrame:
 
 def ensure_usable_panel(df: pd.DataFrame | None) -> pd.DataFrame:
     """Return a validated panel, falling back to synthetic then minimal data."""
-    if is_valid_panel(df):
-        return df  # type: ignore[return-value]
+    cleaned = clean_panel(df)
+    if is_valid_panel(cleaned):
+        return cleaned
     try:
-        syn = generate_synthetic_state_data()
+        syn = clean_panel(generate_synthetic_state_data())
         if is_valid_panel(syn):
             return syn
     except Exception:
         pass
-    return minimal_fallback_panel()
+    return clean_panel(minimal_fallback_panel())
 
 
 def _normalize_series(s: pd.Series) -> pd.Series:
@@ -144,7 +204,7 @@ def generate_synthetic_state_data(seed: int = RANDOM_STATE) -> pd.DataFrame:
             "rural_population": rural_population,
         }
     )
-    return df
+    return clean_panel(df)
 
 
 def _read_exports_csv_bytes(content: bytes) -> pd.DataFrame:
@@ -202,8 +262,7 @@ def exports_to_healthcare_indicators(exports_df: pd.DataFrame) -> pd.DataFrame:
             "rural_population": rural_proxy,
         }
     )
-    out = out.drop_duplicates(subset=["state"], keep="first").reset_index(drop=True)
-    return out
+    return clean_panel(out)
 
 
 def fetch_public_dataset() -> tuple[pd.DataFrame, Literal["real", "simulated"]]:
@@ -217,7 +276,7 @@ def fetch_public_dataset() -> tuple[pd.DataFrame, Literal["real", "simulated"]]:
         resp = requests.get(DATASET_URL, timeout=20)
         resp.raise_for_status()
         raw = _read_exports_csv_bytes(resp.content)
-        enriched = exports_to_healthcare_indicators(raw)
+        enriched = clean_panel(exports_to_healthcare_indicators(raw))
         missing = [c for c in FEATURE_COLUMNS if c not in enriched.columns]
         if missing:
             raise ValueError(f"Missing expected columns after enrich: {missing}")

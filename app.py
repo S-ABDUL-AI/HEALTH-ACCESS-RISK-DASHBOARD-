@@ -233,6 +233,11 @@ def main() -> None:
         st.caption("You are viewing **sample data** for illustration.")
 
     try:
+        df = ensure_usable_panel(df)
+    except Exception:
+        df = minimal_fallback_panel()
+
+    try:
         row_count = len(df)
     except Exception:
         row_count = 0
@@ -271,9 +276,11 @@ def main() -> None:
     display_df["true_label_from_score"] = result.labels.values
     display_df["predicted_risk_tier"] = pred_series.values
     display_df["recommendation"] = display_df["predicted_risk_tier"].map(recommendation_for_tier)
+    display_df["recommendation"] = display_df["recommendation"].fillna("Maintain and monitor access.")
     display_df["priority_area"] = display_df["predicted_risk_tier"].map(
         {"Low": "🟢 Low", "Medium": "🟡 Medium", "High": "🔴 High"}
     )
+    display_df["priority_area"] = display_df["priority_area"].fillna("⚪ Unknown")
 
     try:
         panel_df = attach_panel_medians(display_df)
@@ -470,4 +477,8 @@ def main() -> None:
             st.warning("The influence chart could not be drawn for this data.")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as exc:
+        st.error("The dashboard hit an unexpected error but did not crash the session.")
+        st.exception(exc)

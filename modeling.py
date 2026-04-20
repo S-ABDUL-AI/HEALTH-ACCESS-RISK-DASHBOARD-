@@ -44,6 +44,16 @@ def compute_risk_score(df: pd.DataFrame) -> pd.Series:
 
 def risk_scores_to_labels(scores: pd.Series) -> pd.Series:
     """Map continuous scores to Low / Medium / High by tertiles within the panel."""
+    if len(scores) < 3:
+        return pd.Series(["Medium"] * len(scores), index=scores.index, dtype="category")
+
+    # If scores collapse (e.g., pathological fallback data), use rank order to preserve bands.
+    if pd.Series(scores).nunique() < 3:
+        ranks = pd.Series(scores).rank(method="first")
+        q1, q2 = ranks.quantile([1 / 3, 2 / 3])
+        labels = np.where(ranks <= q1, "Low", np.where(ranks <= q2, "Medium", "High"))
+        return pd.Series(labels, index=scores.index, dtype="category")
+
     q1, q2 = scores.quantile([1 / 3, 2 / 3])
     labels = np.where(scores <= q1, "Low", np.where(scores <= q2, "Medium", "High"))
     return pd.Series(labels, index=scores.index, dtype="category")
@@ -69,6 +79,9 @@ def train_risk_classifier(df: pd.DataFrame) -> TrainedModelResult:
     Labels are defined from the same composite score so the forest learns non-linear
     interactions among the four drivers while staying aligned with policy logic.
     """
+    if len(df) < 4:
+        raise ValueError("Need at least four rows to train and evaluate the classifier.")
+
     X = df[FEATURE_COLUMNS].apply(pd.to_numeric, errors="coerce").fillna(0.0)
     risk = compute_risk_score(df)
     y = risk_scores_to_labels(risk)
