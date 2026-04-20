@@ -19,11 +19,69 @@ def recommendation_for_tier(tier: str) -> str:
     return "Maintain and monitor access."
 
 
+def focus_recommendation_row(row: pd.Series) -> str:
+    """
+    Build a more human-like recommendation for one highlighted state.
+
+    The message updates whenever the selected state changes and blends
+    broad tier guidance with state-specific context.
+    """
+    state = str(row.get("state", "This state"))
+    tier = str(row.get("predicted_risk_tier", "Medium")).title()
+
+    uninsured = float(row.get("uninsured_rate", 0.0))
+    cost = float(row.get("healthcare_cost_index", 0.0))
+    rural = float(row.get("rural_population", 0.0))
+    income = float(row.get("median_income", 0.0))
+
+    med_uninsured = float(row.get("_panel_median_uninsured", uninsured))
+    med_cost = float(row.get("_panel_median_cost", cost))
+    med_rural = float(row.get("_panel_median_rural", rural))
+    med_income = float(row.get("_panel_median_income", income))
+
+    pressures: list[str] = []
+    if uninsured >= med_uninsured:
+        pressures.append("insurance gaps are above the middle of this group")
+    if cost >= med_cost:
+        pressures.append("care costs are running higher than most peers")
+    if rural >= med_rural:
+        pressures.append("rural access challenges are likely to be more visible")
+    if income <= med_income:
+        pressures.append("household income is below the group midpoint")
+
+    if not pressures:
+        pressures.append("current access signals are relatively stable")
+
+    if tier == "High":
+        action = (
+            "I would prioritize immediate coverage expansion, increase subsidy reach, and "
+            "direct near-term funding to rural clinics and transport support."
+        )
+    elif tier == "Medium":
+        action = (
+            "I would focus on affordability first, strengthen enrollment support, and target "
+            "service gaps before they become high-risk."
+        )
+    else:
+        action = (
+            "I would keep current programs in place, continue routine monitoring, and prepare "
+            "contingency support if affordability or coverage starts to weaken."
+        )
+
+    return (
+        f"For {state}, the current {tier.lower()}-priority rating suggests that "
+        + ", ".join(pressures[:3])
+        + ". "
+        + action
+    )
+
+
 def policy_insight_row(row: pd.Series) -> str:
     """
     Short plain-English explanation of *why* modeled risk is elevated or subdued
     for a single state, based on feature values vs panel medians.
     """
+    state = str(row.get("state", "This state"))
     parts: list[str] = []
     med_income = float(row["median_income"])
     unins = float(row["uninsured_rate"])
@@ -31,29 +89,30 @@ def policy_insight_row(row: pd.Series) -> str:
     rural = float(row["rural_population"])
 
     if unins >= float(row.get("_panel_median_uninsured", unins)):
-        parts.append("the share without insurance is higher than for the typical state in this view")
+        parts.append("the share without insurance is higher than the typical state in this view")
     else:
-        parts.append("the share without insurance is lower than for the typical state in this view")
+        parts.append("the share without insurance is lower than the typical state in this view")
 
     if cost >= float(row.get("_panel_median_cost", cost)):
-        parts.append("relative care costs look stronger than for the typical state in this view")
+        parts.append("relative care costs are higher than the typical state in this view")
     else:
-        parts.append("relative care costs look moderate compared with the typical state in this view")
+        parts.append("relative care costs are moderate compared with the typical state in this view")
 
     if med_income <= float(row.get("_panel_median_income", med_income)):
-        parts.append("typical income in this state sits below the middle of this group")
+        parts.append("typical income is below the middle of this group")
     else:
-        parts.append("typical income in this state sits above the middle of this group")
+        parts.append("typical income is above the middle of this group")
 
     if rural >= float(row.get("_panel_median_rural", rural)):
-        parts.append("the rural share is on the high side, which can make clinics and transport harder")
+        parts.append("the rural share is on the high side, which can strain clinics and travel")
     else:
-        parts.append("the rural share is not the strongest factor compared with other states here")
+        parts.append("the rural share is lower than for many states here")
 
+    # Use all four signals so wording differs more often between states.
     return (
-        "Taken together for this state: "
-        + "; ".join(parts[:3])
-        + ". These pieces feed into the overall access risk score you see above."
+        f"For {state}: "
+        + "; ".join(parts)
+        + ". Together these shape this state’s access risk score."
     )
 
 

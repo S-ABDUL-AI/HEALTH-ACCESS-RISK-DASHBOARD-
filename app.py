@@ -25,10 +25,29 @@ from data import (
 from modeling import predict_for_dataframe, train_risk_classifier
 from policy import (
     attach_panel_medians,
+    focus_recommendation_row,
     policy_brief,
     policy_insight_row,
     recommendation_for_tier,
 )
+
+
+def _focus_insight_for_row(display_df: pd.DataFrame, row: pd.Series) -> str:
+    """Build the ‘why’ text from the exact highlighted row (always matches sidebar state)."""
+    try:
+        panel_full = attach_panel_medians(display_df)
+        return policy_insight_row(panel_full.loc[row.name])
+    except Exception:
+        return str(row.get("policy_insight", "A short explanation could not be built for this row."))
+
+
+def _focus_recommendation_for_row(display_df: pd.DataFrame, row: pd.Series) -> str:
+    """Build a state-specific recommendation from the exact highlighted row."""
+    try:
+        panel_full = attach_panel_medians(display_df)
+        return focus_recommendation_row(panel_full.loc[row.name])
+    except Exception:
+        return str(row.get("recommendation", "Recommendation is not available for this row."))
 
 # Plain-language names for charts only (does not change model columns).
 CHART_FEATURE_LABELS = {
@@ -36,6 +55,12 @@ CHART_FEATURE_LABELS = {
     "uninsured_rate": "Share of people without insurance",
     "healthcare_cost_index": "Relative cost of care",
     "rural_population": "Share of people in rural communities",
+}
+
+TIER_COLORS = {
+    "Low": {"text": "#059669", "bg": "#ecfdf5"},
+    "Medium": {"text": "#b45309", "bg": "#fffbeb"},
+    "High": {"text": "#dc2626", "bg": "#fef2f2"},
 }
 
 
@@ -225,6 +250,9 @@ def main() -> None:
     display_df["true_label_from_score"] = result.labels.values
     display_df["predicted_risk_tier"] = pred_series.values
     display_df["recommendation"] = display_df["predicted_risk_tier"].map(recommendation_for_tier)
+    display_df["priority_area"] = display_df["predicted_risk_tier"].map(
+        {"Low": "🟢 Low", "Medium": "🟡 Medium", "High": "🔴 High"}
+    )
 
     try:
         panel_df = attach_panel_medians(display_df)
@@ -252,6 +280,8 @@ def main() -> None:
 
     state_score = float(row["risk_score"])
     tier = str(row["predicted_risk_tier"])
+    tier_style = TIER_COLORS.get(tier, {"text": "#0d9488", "bg": "#f0fdfa"})
+    focus_recommendation = _focus_recommendation_for_row(display_df, row)
 
     # --- Hero: focus state (left, key message) + compact snapshot (right) ---
     hero_left, hero_right = st.columns([1.45, 0.92], gap="large")
@@ -262,23 +292,32 @@ def main() -> None:
         _tier = html.escape(tier)
         st.markdown(
             f'<p class="focus-hero"><span style="font-size:1.35rem;font-weight:600;">{_fn}</span>'
-            f' &nbsp;·&nbsp; <span style="font-weight:600;">{_tier}</span> priority</p>',
+            f' &nbsp;·&nbsp; <span style="font-weight:700;color:{tier_style["text"]};background:{tier_style["bg"]};'
+            f'padding:0.2rem 0.5rem;border-radius:999px;">{_tier}</span> priority</p>',
             unsafe_allow_html=True,
         )
         st.markdown(
             f'<div class="focus-score-wrap">'
             f'<div><span class="focus-score-label">Access risk score</span>'
-            f'<span class="focus-score-num">{state_score:.1f}</span></div>'
+            f'<span class="focus-score-num" style="color:{tier_style["text"]};">{state_score:.1f}</span></div>'
             f'<div class="focus-score-avg">Average for all states in this view: '
             f"<strong>{mean_risk:.1f}</strong></div>"
             f"</div>",
             unsafe_allow_html=True,
         )
         st.markdown("**Suggested direction**")
-        st.write(str(row["recommendation"]))
+        st.caption(
+            "General actions tied to this state’s **priority band** (high, medium, or low). "
+            "The same band can share the same direction even when details differ."
+        )
+        st.write(focus_recommendation)
         st.markdown("**Why this priority level**")
+        st.caption(
+            "State-specific: how this state compares to others in the data on insurance, costs, income, and rural share."
+        )
+        _insight = _focus_insight_for_row(display_df, row)
         st.markdown(
-            f'<p class="focus-insight">{html.escape(str(row.get("policy_insight", "")))}</p>',
+            f'<p class="focus-insight">{html.escape(_insight)}</p>',
             unsafe_allow_html=True,
         )
 
@@ -339,6 +378,7 @@ def main() -> None:
     st.markdown("### State-by-state results")
     table_cols = [
         "state",
+        "priority_area",
         "median_income",
         "uninsured_rate",
         "healthcare_cost_index",
