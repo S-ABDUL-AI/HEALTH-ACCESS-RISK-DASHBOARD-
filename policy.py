@@ -54,18 +54,18 @@ def focus_recommendation_row(row: pd.Series) -> str:
 
     if tier == "High":
         action = (
-            "I would prioritize immediate coverage expansion, increase subsidy reach, and "
-            "direct near-term funding to rural clinics and transport support."
+            "Recommended next steps are immediate coverage expansion, stronger subsidy reach, "
+            "and near-term funding for rural clinics and transport support."
         )
     elif tier == "Medium":
         action = (
-            "I would focus on affordability first, strengthen enrollment support, and target "
-            "service gaps before they become high-risk."
+            "Recommended next steps are to improve affordability first, strengthen enrollment support, "
+            "and close service gaps before they become high-risk."
         )
     else:
         action = (
-            "I would keep current programs in place, continue routine monitoring, and prepare "
-            "contingency support if affordability or coverage starts to weaken."
+            "Recommended next steps are to keep current programs in place, continue routine monitoring, "
+            "and prepare contingency support if affordability or coverage starts to weaken."
         )
 
     return (

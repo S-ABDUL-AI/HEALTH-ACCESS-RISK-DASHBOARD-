@@ -58,9 +58,24 @@ CHART_FEATURE_LABELS = {
 }
 
 TIER_COLORS = {
-    "Low": {"text": "#059669", "bg": "#ecfdf5"},
-    "Medium": {"text": "#b45309", "bg": "#fffbeb"},
-    "High": {"text": "#dc2626", "bg": "#fef2f2"},
+    "Low": {
+        "accent": "#059669",
+        "pill_bg": "#ecfdf5",
+        "box_bg": "#047857",
+        "box_text": "#ffffff",
+    },
+    "Medium": {
+        "accent": "#b45309",
+        "pill_bg": "#fffbeb",
+        "box_bg": "#b45309",
+        "box_text": "#ffffff",
+    },
+    "High": {
+        "accent": "#dc2626",
+        "pill_bg": "#fef2f2",
+        "box_bg": "#b91c1c",
+        "box_text": "#ffffff",
+    },
 }
 
 
@@ -138,6 +153,7 @@ def _inject_styles() -> None:
         .focus-score-avg { font-size: 1.05rem; line-height: 1.35; color: #6b7280; padding-bottom: 0.2rem; }
         .focus-score-avg strong { color: #374151; font-weight: 600; }
         .focus-insight { font-size: 0.95rem; line-height: 1.5; opacity: 0.95; margin-top: 0.5rem; }
+        .priority-textbox { margin-top: 0.35rem; padding: 0.8rem 0.95rem; border-radius: 0.6rem; font-size: 0.96rem; line-height: 1.5; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -280,7 +296,10 @@ def main() -> None:
 
     state_score = float(row["risk_score"])
     tier = str(row["predicted_risk_tier"])
-    tier_style = TIER_COLORS.get(tier, {"text": "#0d9488", "bg": "#f0fdfa"})
+    tier_style = TIER_COLORS.get(
+        tier,
+        {"accent": "#0d9488", "pill_bg": "#f0fdfa", "box_bg": "#0d9488", "box_text": "#ffffff"},
+    )
     focus_recommendation = _focus_recommendation_for_row(display_df, row)
 
     # --- Hero: focus state (left, key message) + compact snapshot (right) ---
@@ -292,14 +311,14 @@ def main() -> None:
         _tier = html.escape(tier)
         st.markdown(
             f'<p class="focus-hero"><span style="font-size:1.35rem;font-weight:600;">{_fn}</span>'
-            f' &nbsp;·&nbsp; <span style="font-weight:700;color:{tier_style["text"]};background:{tier_style["bg"]};'
+            f' &nbsp;·&nbsp; <span style="font-weight:700;color:{tier_style["accent"]};background:{tier_style["pill_bg"]};'
             f'padding:0.2rem 0.5rem;border-radius:999px;">{_tier}</span> priority</p>',
             unsafe_allow_html=True,
         )
         st.markdown(
             f'<div class="focus-score-wrap">'
             f'<div><span class="focus-score-label">Access risk score</span>'
-            f'<span class="focus-score-num" style="color:{tier_style["text"]};">{state_score:.1f}</span></div>'
+            f'<span class="focus-score-num" style="color:{tier_style["accent"]};">{state_score:.1f}</span></div>'
             f'<div class="focus-score-avg">Average for all states in this view: '
             f"<strong>{mean_risk:.1f}</strong></div>"
             f"</div>",
@@ -310,14 +329,19 @@ def main() -> None:
             "General actions tied to this state’s **priority band** (high, medium, or low). "
             "The same band can share the same direction even when details differ."
         )
-        st.write(focus_recommendation)
+        st.markdown(
+            f'<div class="priority-textbox" style="background:{tier_style["box_bg"]};'
+            f'color:{tier_style["box_text"]};">{html.escape(focus_recommendation)}</div>',
+            unsafe_allow_html=True,
+        )
         st.markdown("**Why this priority level**")
         st.caption(
             "State-specific: how this state compares to others in the data on insurance, costs, income, and rural share."
         )
         _insight = _focus_insight_for_row(display_df, row)
         st.markdown(
-            f'<p class="focus-insight">{html.escape(_insight)}</p>',
+            f'<div class="priority-textbox" style="background:{tier_style["box_bg"]};'
+            f'color:{tier_style["box_text"]};">{html.escape(_insight)}</div>',
             unsafe_allow_html=True,
         )
 
