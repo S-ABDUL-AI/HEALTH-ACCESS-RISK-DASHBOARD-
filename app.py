@@ -142,15 +142,17 @@ def _inject_styles() -> None:
     st.markdown(
         """
         <style>
-        div.block-container { padding-top: 0.35rem; padding-bottom: 1.5rem; }
+        div.block-container { padding-top: 0.9rem; padding-bottom: 1.5rem; }
         h1 {
-            font-size: clamp(1.55rem, 2.5vw, 2.1rem) !important;
-            letter-spacing: 0;
+            font-size: clamp(1.7rem, 2.2vw, 2rem) !important;
+            letter-spacing: -0.005em;
             font-weight: 600;
-            margin-bottom: 0.15rem;
-            line-height: 1.15;
+            margin-top: 0.1rem;
+            margin-bottom: 0.2rem;
+            line-height: 1.2;
             white-space: normal;
-            overflow-wrap: anywhere;
+            overflow-wrap: normal;
+            word-break: normal;
         }
         .policy-purpose { font-size: 0.92rem; line-height: 1.35; color: inherit; margin-bottom: 0.15rem; }
         .designer-attribution { font-size: 0.85rem; opacity: 0.85; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(128,128,128,0.35); }
