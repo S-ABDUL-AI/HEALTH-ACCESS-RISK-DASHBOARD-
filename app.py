@@ -169,10 +169,10 @@ def main() -> None:
     )
     _inject_styles()
 
-    # --- Header: title + compact purpose (keeps focus state above the fold) ---
+    # --- Header: title + challenge statement (keeps focus state above the fold) ---
     st.title("Healthcare Access Risk Dashboard")
     st.markdown(
-        '<p class="policy-purpose">'
+        '<p class="policy-purpose"><strong>Challenge / problem statement:</strong> '
         "Spot states under pressure on healthcare access, then act on coverage, subsidies, and rural services. "
         "Each score blends income, insurance gaps, cost signals, and rural share."
         "</p>",
@@ -219,6 +219,11 @@ def main() -> None:
         with st.expander("Public data link (live mode)"):
             st.caption("Used when “Use Real Data” is on and the connection succeeds.")
             st.code(DATASET_URL, language="text")
+
+        st.markdown(
+            '<p class="designer-attribution">Designed by: Sherriff Abdul-Hamid</p>',
+            unsafe_allow_html=True,
+        )
 
     # Real-data failure → sample data + warning (not shown when user chose sample data on purpose)
     if use_real and load_warning:
@@ -463,12 +468,6 @@ def main() -> None:
             st.plotly_chart(fig_fi, use_container_width=True)
         except Exception:
             st.warning("The influence chart could not be drawn for this data.")
-
-    st.markdown(
-        '<p class="designer-attribution">Designed by: Sherriff Abdul-Hamid</p>',
-        unsafe_allow_html=True,
-    )
-
 
 if __name__ == "__main__":
     main()
