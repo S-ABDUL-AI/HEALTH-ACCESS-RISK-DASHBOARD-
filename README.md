@@ -1,208 +1,176 @@
-# Healthcare Access Risk Dashboard
+# Medicaid & Healthcare Access Risk Monitor
+### State-Level Coverage Prioritization for Policy Teams and Program Officers
 
-Production-quality Streamlit dashboard to help policymakers identify U.S. states at risk of losing healthcare access.
+**Built by Sherriff Abdul-Hamid**  
+Product leader specializing in government digital services, Medicaid and safety net
+benefits delivery, and decision-support tools for underserved communities.
 
-Designed by: Sherriff Abdul-Hamid
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://chpghrwawmvddoquvmniwm.streamlit.app/)
 
-## Challenge / Problem Statement
+---
 
-Spot states under pressure on healthcare access, then act on coverage, subsidies, and rural services.  
-Each score blends income, insurance gaps, cost signals, and rural share.
+## The Problem This Solves
 
-## What This App Does
+> *Which states are under the most pressure on healthcare access — and what should happen next?*
 
-- Loads real public U.S. data (hosted CSV) and derives healthcare-style indicators by state.
-- Falls back safely to simulated/sample data if real data fails.
-- Trains a `RandomForestClassifier` to classify `Low`, `Medium`, and `High` risk.
-- Displays policy-focused outputs:
-  - Focus-state recommendation (human-style, state-specific)
-  - Plain-English explanation for risk level
-  - Policy brief
-  - Risk chart by state
-  - Feature importance chart
+State Medicaid program officers, federal policy teams, and healthcare coverage
+administrators need a fast, evidence-based way to identify which states face the
+highest access risk across insurance gaps, cost burden, income capacity, and
+rural service reach — and to generate immediate, defensible policy directions.
 
-## Project Structure
+This tool provides that: a composite risk score for all 50 US states, structured
+policy briefs, priority banding, and a validated model — in a format that supports
+real decision-making.
 
-- `app.py` - Streamlit UI and orchestration.
-- `config.py` - constants (dataset URL, feature columns, random seed).
-- `data.py` - loading, cleaning, validation, fallback logic.
-- `modeling.py` - risk scoring, labels, model training and prediction.
-- `policy.py` - recommendation engine, policy explanation, policy brief.
-- `requirements.txt` - Python dependencies.
+---
 
-## Install and Run
+## What This Tool Produces
+
+| Output | Description |
+|---|---|
+| **National Panel Snapshot** | High/medium/low priority state counts, average score, model match rate |
+| **Focus State Brief** | Detailed risk explanation for any selected state — why it's positioned at its priority level |
+| **Suggested Direction** | Concrete, priority-band-specific policy actions for coverage expansion, rural access, and cost reduction |
+| **Full Policy Brief** | Expandable narrative-format brief for each state — briefing-document ready |
+| **Access Risk Chart** | All 50 states ranked by score, color-coded by priority band with national average reference line |
+| **Feature Importance Chart** | Model coefficient chart showing which indicators most drive risk scores |
+| **State-by-State Table** | Full panel with all indicators, filterable by priority band |
+| **CSV Export** | Full results table for inclusion in official planning documents |
+
+---
+
+## Access Risk Score — Method
+
+The composite score blends four publicly available indicators, each normalized 0–100:
+
+```
+access_risk_score =
+    uninsured_rate_norm     × 0.40   (primary driver: coverage gap)
+  + rural_share_norm        × 0.25   (service delivery reach)
+  + income_norm             × 0.20   (household capacity to afford care)
+  + healthcare_cost_norm    × 0.15   (cost-of-care pressure)
+```
+
+**Priority bands:**
+- 🔴 **High** — score ≥ 60: immediate coverage expansion and rural access investment needed
+- 🟡 **Medium** — score 35–59: targeted outreach and preventive investment
+- 🟢 **Low** — score < 35: sustain programs, monitor for emerging risk signals
+
+**Model validation:**  
+A logistic regression classifier assigns priority bands to held-out validation states,
+achieving a **77% match rate** — indicating reliable signal for initial triage.
+Production deployment should be validated against CMS enrollment data.
+
+---
+
+## Input Data Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `state` | string | US state name |
+| `median_income` | float | Median household income (USD) |
+| `uninsured_rate` | float | Share of population without health insurance (%) |
+| `healthcare_cost_index` | float | Relative cost of healthcare vs. national baseline |
+| `rural_population_share` | float | Share of population in rural areas (0–1) |
+
+**Data sources for production deployment:**
+- **Uninsured rate:** Census Bureau American Community Survey (ACS)
+- **Median income:** ACS Table B19013
+- **Healthcare cost index:** CMS Geographic Variation Public Use Files
+- **Rural share:** USDA Economic Research Service rural-urban classifications
+
+---
+
+## Repository Structure
+
+```
+├── app.py                  # Main Streamlit UI — layout, briefs, charts, table
+├── model.py                # Access risk scoring and logistic regression classifier
+├── data.py                 # Built-in illustrative state data + live data loader
+├── requirements.txt        # Runtime dependencies
+└── README.md               # This file
+```
+
+---
+
+## Run Locally
 
 ```bash
-cd healthcare_access_risk_dashboard
+# Clone the repository
+git clone https://github.com/S-ABDUL-AI/[REPO-NAME].git
+cd [REPO-NAME]
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Launch the app
 streamlit run app.py
 ```
 
-## Data Source
+**Requirements:** `streamlit` · `pandas` · `numpy` · `plotly` · `scikit-learn`
 
-Primary public URL:
+---
 
-`https://raw.githubusercontent.com/plotly/datasets/master/2011_us_ag_exports.csv`
+## Deployment
 
-Note: this source is not native healthcare data. The app transparently derives indicator-style healthcare variables from the public state-level file to keep the workflow reproducible.
+Deployed on Streamlit Community Cloud.  
+Live demo: [Medicaid & Healthcare Access Risk Monitor](https://chpghrwawmvddoquvmniwm.streamlit.app/)
 
-## Real-World Robustness (What Was Added)
+**Rename the URL slug** (recommended):  
+In Streamlit Cloud settings, change to: `medicaid-healthcare-access-risk-monitor`
 
-### 1) Data validation and cleaning (`data.py`)
+---
 
-- `clean_panel(df)` standardizes, validates, and sanitizes input:
-  - normalizes column names
-  - enforces required columns
-  - coerces numeric types
-  - clips outliers to realistic ranges
-  - removes bad/duplicate state rows
-  - imputes missing values using medians or safe defaults
-- `is_valid_panel(df)` checks minimum viability and schema.
-- `ensure_usable_panel(df)` guarantees a usable panel with layered fallback:
-  1. cleaned input
-  2. synthetic panel
-  3. minimal hard fallback panel
+## Why This Matters for Government Digital Services
 
-### 2) Model hardening (`modeling.py`)
+This tool was built to demonstrate what government program officers actually need:
+not just a chart, but a **structured decision brief** — risk, implication, and
+action — that maps directly to the way policy decisions are made and documented.
 
-- `risk_scores_to_labels(scores)` now handles edge cases:
-  - very small datasets
-  - nearly constant scores
-- `train_risk_classifier(df)` guards against training on too-few rows.
-- split logic already falls back from stratified to non-stratified where needed.
+The "Focus State Brief" section mirrors the output format of a real ministerial
+or legislative brief. The "Suggested Direction" panel is priority-band-specific
+and actionable within a single program cycle.
 
-### 3) App-level fault tolerance (`app.py`)
+This design philosophy — building tools that help government workers make better
+decisions for people who need them, rather than tools that impress data scientists —
+reflects the author's approach to all products in this portfolio.
 
-- loading path is protected by try/except and validation gates.
-- model run is protected with fallback retraining on safe data.
-- table/chart rendering is isolated with local fallback warnings.
-- top-level app entry has a final exception guard so the Streamlit session does not fail silently.
+---
 
-## Input Schema
+## Scope Note
 
-Expected modeling columns:
+> All built-in data is **illustrative** for product design demonstration.  
+> Production Medicaid prioritization requires official CMS administrative data,
+> ACS coverage statistics, state enrollment records, and legal programme review.  
+> Model rankings should be validated against program-level data before use in
+> official resource allocation decisions.
 
-- `state`
-- `median_income`
-- `uninsured_rate`
-- `healthcare_cost_index`
-- `rural_population`
+---
 
-## Risk Logic
+## About the Author
 
-Composite score (0-100), where higher = higher risk:
+**Sherriff Abdul-Hamid** is a product leader and data scientist specializing in
+government digital services, Medicaid-adjacent safety net programs, and
+decision-support tools for historically underserved communities.
 
-- + Higher `uninsured_rate`
-- + Higher `healthcare_cost_index`
-- + Lower `median_income`
-- + Higher `rural_population`
+- Former Founder & CEO, Poverty 360 — 25,000+ beneficiaries served across West Africa
+- Partnered with Ghana's National Health Insurance Authority (NHIA) to enroll
+  1,250 vulnerable women and abuse survivors into national health coverage
+- Directed $200M+ in resource allocation decisions for USAID, UNDP, UKAID programs
+- **Obama Foundation Leaders Award** — Top 1.3% globally, 2023
+- **Mandela Washington Fellow** — Top 0.3%, U.S. Department of State, 2018
+- Harvard Business School · Senior Executive Program in General Management
+- Healthcare Analytics Essentials — Northeastern University, 2024
 
-Risk classes are generated as `Low` / `Medium` / `High` bands.
+**Connect:** [LinkedIn](https://www.linkedin.com/in/abdul-hamid-sherriff-08583354/) · [Portfolio](https://share.streamlit.io/user/s-abdul-ai)
 
-## Policy Layer
+---
 
-- Tier baseline guidance:
-  - High -> Expand Medicaid, increase subsidies, invest in rural clinics
-  - Medium -> Improve insurance coverage and affordability
-  - Low -> Maintain and monitor access
-- Focus-state recommendation is rewritten dynamically based on state conditions.
-- "Why this priority level" explains the state relative to panel medians in plain English.
+## Related Projects
 
-## Line-by-Line Code Walkthrough (Execution Order)
-
-This section explains the code flow in the same order the app runs.
-
-### `app.py`
-
-1. Import dependencies (`streamlit`, `pandas`, `plotly`, local modules).
-2. Define helper `_focus_insight_for_row(...)` to generate the focus-state "why" text from the selected row.
-3. Define helper `_focus_recommendation_for_row(...)` to generate state-specific recommendation text.
-4. Define display mappings:
-   - chart labels (`CHART_FEATURE_LABELS`)
-   - tier color palette (`TIER_COLORS`)
-5. Define `load_dataset_cached(...)` with `@st.cache_data`:
-   - reads real vs sample mode
-   - catches load failures
-   - validates data
-   - returns `(df, source_tag, warning_message)`
-6. Define `_inject_styles()` for visual layout and callout boxes.
-7. In `main()`, set page config and inject styles.
-8. Render title and challenge/problem statement.
-9. Build sidebar controls:
-   - real/sample toggle
-   - focus state selector
-   - public data URL
-   - attribution text
-10. Show data-source warnings/messages in main panel.
-11. Re-validate panel through `ensure_usable_panel`.
-12. Compute row count + source label and display summary caption.
-13. Train model inside guarded try/except; fallback to safe datasets on error.
-14. Build `display_df` with:
-   - risk scores
-   - predicted tier
-   - recommendation
-   - priority label
-15. Attach medians and compute policy insight column.
-16. Compute headline metrics (`high_ct`, `mean_risk`).
-17. Resolve selected focus-state row safely.
-18. Determine tier style colors and generate focus recommendation.
-19. Render hero section:
-   - state + tier pill
-   - colored risk score
-   - average score
-   - suggested direction (tier-colored text box)
-   - why text (tier-colored text box)
-20. Render panel snapshot metrics.
-21. Render policy brief inside expander.
-22. Render data preview and "About the numbers".
-23. Render state-by-state results table.
-24. Render risk bar chart and feature-importance chart.
-25. Execute `main()` in top-level guarded try/except.
-26. Show clear Streamlit error message if an unexpected exception escapes.
-
-### `data.py`
-
-1. Define required schema and numeric bounds.
-2. `clean_panel(...)` sanitizes and stabilizes raw data.
-3. `is_valid_panel(...)` validates cleaned panel.
-4. `minimal_fallback_panel()` returns safe emergency rows.
-5. `ensure_usable_panel(...)` enforces multi-layer fallback.
-6. `generate_synthetic_state_data(...)` creates deterministic sample data.
-7. `exports_to_healthcare_indicators(...)` transforms public CSV into modeling columns.
-8. `fetch_public_dataset(...)` attempts real load and falls back safely.
-
-### `modeling.py`
-
-1. `compute_risk_score(...)` computes weighted normalized score.
-2. `risk_scores_to_labels(...)` creates robust class labels.
-3. `train_risk_classifier(...)` trains and evaluates random forest.
-4. `predict_for_dataframe(...)` predicts class on full panel.
-
-### `policy.py`
-
-1. `recommendation_for_tier(...)` gives baseline action by tier.
-2. `focus_recommendation_row(...)` generates human-style state recommendation.
-3. `policy_insight_row(...)` builds state-specific explanation.
-4. `attach_panel_medians(...)` creates comparison baselines.
-5. `policy_brief(...)` auto-generates 3-4 sentence summary.
-
-## Deployment Notes
-
-### Streamlit Community Cloud
-
-- Set entrypoint to `healthcare_access_risk_dashboard/app.py`.
-- Ensure `requirements.txt` is in the same directory as entrypoint or configured correctly.
-- App is resilient to temporary data URL failures (automatic sample fallback).
-
-### Local/Server Best Practices
-
-- Run behind a process manager (e.g., `systemd` or Docker restart policy).
-- Pin dependency versions in production lockfiles.
-- Add application logging and monitoring for request/data failures.
-
-## Limitations and Next Improvements
-
-- Current "real data" source is a public proxy input transformed to healthcare-like indicators.
-- For policy production, replace transforms with direct CMS/Census/ACS health-access feeds.
-- Add automated tests (`pytest`) for validation, model edge cases, and UI data contracts.
-
+| Project | Description |
+|---|---|
+| [Public Budget Allocation Tool](https://smart-resource-allocation-dashboard-eudzw5r2f9pbu4qyw3psez.streamlit.app/) | Need-based government budget distribution with ministerial brief — SNAP and Medicaid-adjacent program planning |
+| [GovFund Allocation Engine](https://impact-allocation-engine-ahxxrbgwmvyapwmifahk2b.streamlit.app/) | Cost-effectiveness decision tool for global health funders — models cost-per-life-saved across malaria, nutrition, and social protection |
+| [Community Vulnerability Index](https://povertyearlywarningsystem-7rrmkktbi7bwha2nna8gk7.streamlit.app/) | Predictive vulnerability targeting for safety net program outreach |
+| [Global Vaccination Coverage Explorer](https://worldvaccinationcoverage-etl-ftvwbikifyyx78xyy2j3zv.streamlit.app/) | WHO vaccination data across 190+ countries — automated ETL for public health teams |
